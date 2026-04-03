@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>代理下单系统</title>
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: #f5f5f5;
+      min-height: 100vh;
+      color: #333;
+    }
+
+    /* 顶部导航 */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .header h1 {
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .header-right {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+
+    .header-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: #fff;
+      padding: 8px 15px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .header-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    /* 主容器 */
+    .main-container {
+      padding-top: 70px;
+      padding-bottom: 80px;
+      max-width: 100%;
+    }
+
+    /* 页面容器 */
+    .page {
+      display: none;
+      padding: 15px;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    /* 视图标题 */
+    .page-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    /* 产品网格 */
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+
+    .product-card {
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .product-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    }
+
+    .product-img {
+      width: 100%;
+      aspect-ratio: 1;
+      background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 4rem;
+    }
+
+    .product-info {
+      padding: 12px;
+    }
+
+    .product-name {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    .product-price {
+      color: #e74c3c;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    .product-unit {
+      font-size: 0.85rem;
+      color: #999;
+      font-weight: 400;
+    }
+
+    /* 底部导航 */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #fff;
+      display: flex;
+      justify-content: space-around;
+      padding: 10px 0;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+      z-index: 100;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: #999;
+      font-size: 0.75rem;
+      cursor: pointer;
+      padding: 5px 15px;
+      border-radius: 10px;
+      transition: all 0.3s;
+    }
+
+    .nav-item.active {
+      color: #667eea;
+    }
+
+    .nav-item .icon {
+      font-size: 1.5rem;
+    }
+
+    /* 登录/注册页 */
+    .auth-page {
+      padding-top: 100px;
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+
+    .auth-logo {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .auth-logo .icon {
+      font-size: 4rem;
+      margin-bottom: 15px;
+    }
+
+    .auth-logo h2 {
+      font-size: 1.5rem;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    .auth-logo p {
+      color: #999;
+      font-size: 0.9rem;
+    }
+
+    .auth-form {
+      background: #fff;
+      border-radius: 20px;
+      padding: 30px 25px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 14px 15px;
+      border: 2px solid #eee;
+      border-radius: 12px;
+      font-size: 1rem;
+      transition: all 0.3s;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .auth-btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .auth-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .auth-footer {
+      text-align: center;
+      margin-top: 25px;
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    .auth-footer a {
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    /* 下单页 */
+    .order-page {
+      padding-top: 70px;
+    }
+
+    .product-detail {
+      background: #fff;
+      border-radius: 20px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .product-detail-img {
+      width: 100%;
+      aspect-ratio: 1;
+      background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 5rem;
+    }
+
+    .product-detail-info {
+      padding: 20px;
+    }
+
+    .product-detail-name {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .product-detail-price {
+      color: #e74c3c;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .spec-section, .address-section {
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 15px;
+    }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: #333;
+    }
+
+    .spec-options {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .spec-option {
+      padding: 12px 20px;
+      border: 2px solid #eee;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+    }
+
+    .spec-option:hover {
+      border-color: #667eea;
+    }
+
+    .spec-option.active {
+      border-color: #667eea;
+      background: rgba(102, 126, 234, 0.1);
+      color: #667eea;
+    }
+
+    .spec-option .spec-name {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .spec-option .spec-price {
+      color: #e74c3c;
+      font-weight: 700;
+    }
+
+    .address-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .address-form input, .address-form textarea {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #eee;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+
+    .address-form input:focus, .address-form textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .address-form textarea {
+      resize: none;
+      height: 80px;
+    }
+
+    /* 支付方式 */
+    .payment-section {
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 100px;
+    }
+
+    .payment-options {
+      display: flex;
+      gap: 15px;
+    }
+
+    .payment-option {
+      flex: 1;
+      padding: 15px;
+      border: 2px solid #eee;
+      border-radius: 12px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.3s;
+    }
+
+    .payment-option:hover {
+      border-color: #667eea;
+    }
+
+    .payment-option.active {
+      border-color: #667eea;
+      background: rgba(102, 126, 234, 0.1);
+    }
+
+    .payment-option .icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    .payment-option .name {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    /* 提交订单按钮 */
+    .submit-order {
+      position: fixed;
+      bottom: 70px;
+      left: 0;
+      right: 0;
+      padding: 15px 20px;
+      background: #fff;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+      z-index: 99;
+    }
+
+    .submit-order-btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* 订单列表 */
+    .order-list {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .order-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 15px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .order-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .order-id {
+      font-size: 0.85rem;
+      color: #999;
+    }
+
+    .order-status {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .order-status.pending {
+      background: #fff3e0;
+      color: #ff9800;
+    }
+
+    .order-status.shipped {
+      background: #e3f2fd;
+      color: #2196f3;
+    }
+
+    .order-status.completed {
+      background: #e8f5e9;
+      color: #4caf50;
+    }
+
+    .order-product {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .order-product-img {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+
+    .order-product-info h4 {
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+    }
+
+    .order-product-info p {
+      font-size: 0.85rem;
+      color: #999;
+    }
+
+    .order-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .order-total {
+      color: #e74c3c;
+      font-weight: 700;
+    }
+
+    .order-time {
+      font-size: 0.8rem;
+      color: #999;
+    }
+
+    /* 排行榜页 */
+    .rank-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+      padding-bottom: 5px;
+    }
+
+    .rank-tab {
+      padding: 10px 18px;
+      background: #fff;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      transition: all 0.3s;
+    }
+
+    .rank-tab.active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+    }
+
+    .rank-list {
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .rank-item {
+      display: flex;
+      align-items: center;
+      padding: 15px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .rank-item:last-child {
+      border-bottom: none;
+    }
+
+    .rank-num {
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      margin-right: 15px;
+    }
+
+    .rank-num.gold {
+      background: linear-gradient(135deg, #ffd700, #ffaa00);
+      color: #fff;
+    }
+
+    .rank-num.silver {
+      background: linear-gradient(135deg, #c0c0c0, #a8a8a8);
+      color: #fff;
+    }
+
+    .rank-num.bronze {
+      background: linear-gradient(135deg, #cd7f32, #b87333);
+      color: #fff;
+    }
+
+    .rank-num.normal {
+      background: #f0f0f0;
+      color: #999;
+    }
+
+    .rank-agent {
+      flex: 1;
+    }
+
+    .rank-agent-name {
+      font-weight: 600;
+    }
+
+    .rank-sales {
+      text-align: right;
+    }
+
+    .rank-sales-value {
+      font-weight: 700;
+      color: #e74c3c;
+      margin-bottom: 3px;
+    }
+
+    .rank-change {
+      font-size: 0.8rem;
+    }
+
+    .rank-change.up { color: #4caf50; }
+    .rank-change.down { color: #f44336; }
+    .rank-change.same { color: #999; }
+
+    /* 个人中心 */
+    .profile-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      padding: 30px 20px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .profile-avatar {
+      width: 80px;
+      height: 80px;
+      background: rgba(255,255,255,0.3);
+      border-radius: 50%;
+      margin: 0 auto 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+    }
+
+    .profile-name {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .profile-team {
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    .profile-stats {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .profile-stat {
+      text-align: center;
+    }
+
+    .profile-stat-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    .profile-stat-label {
+      font-size: 0.8rem;
+      opacity: 0.9;
+    }
+
+    .profile-menu {
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .profile-menu-item {
+      display: flex;
+      align-items: center;
+      padding: 15px 20px;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .profile-menu-item:hover {
+      background: #f9f9f9;
+    }
+
+    .profile-menu-item:last-child {
+      border-bottom: none;
+    }
+
+    .profile-menu-item .icon {
+      font-size: 1.3rem;
+      margin-right: 15px;
+    }
+
+    .profile-menu-item .text {
+      flex: 1;
+    }
+
+    .profile-menu-item .arrow {
+      color: #ccc;
+    }
+
+    .logout-btn {
+      width: 100%;
+      padding: 15px;
+      background: #fff;
+      border: none;
+      color: #e74c3c;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 20px;
+      border-radius: 16px;
+    }
+
+    /* Toast 提示 */
+    .toast {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      color: #fff;
+      padding: 12px 25px;
+      border-radius: 30px;
+      font-size: 0.9rem;
+      z-index: 1000;
+      opacity: 0;
+      transition: all 0.3s;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    /* 审核状态提示 */
+    .audit-notice {
+      background: #fff3cd;
+      color: #856404;
+      padding: 15px 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* 空状态 */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+
+    .empty-state .icon {
+      font-size: 4rem;
+      margin-bottom: 15px;
+    }
+
+    .empty-state p {
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <!-- Toast 提示 -->
+  <div class="toast" id="toast"></div>
+
+  <!-- 登录页 -->
+  <div class="page auth-page" id="authPage">
+    <div class="auth-logo">
+      <div class="icon">🎂</div>
+      <h2>代理下单系统</h2>
+      <p>便捷下单 · 实时追踪 · 业绩透明</p>
+    </div>
+
+    <div class="auth-form" id="loginForm">
+      <div class="form-group">
+        <label>手机号</label>
+        <input type="tel" id="loginPhone" placeholder="请输入手机号" maxlength="11">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="loginPwd" placeholder="请输入密码">
+      </div>
+      <button class="auth-btn" onclick="doLogin()">登录</button>
+      <div class="auth-footer">
+        还没有账号？<a href="#" onclick="showRegister()">立即注册</a>
+      </div>
+    </div>
+
+    <div class="auth-form" id="registerForm" style="display:none;">
+      <div class="form-group">
+        <label>手机号</label>
+        <input type="tel" id="regPhone" placeholder="请输入手机号" maxlength="11">
+      </div>
+      <div class="form-group">
+        <label>姓名</label>
+        <input type="text" id="regName" placeholder="请输入姓名">
+      </div>
+      <div class="form-group">
+        <label>设置密码</label>
+        <input type="password" id="regPwd" placeholder="请设置登录密码">
+      </div>
+      <button class="auth-btn" onclick="doRegister()">注册</button>
+      <div class="auth-footer">
+        已有账号？<a href="#" onclick="showLogin()">立即登录</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 主页面 -->
+  <div class="main-container" id="mainApp" style="display:none;">
+    <!-- 顶部导航 -->
+    <div class="header">
+      <h1>🎂 代理下单</h1>
+      <div class="header-right">
+        <button class="header-btn" onclick="showPage('order')">📦 我的订单</button>
+        <button class="header-btn" onclick="logout()">退出</button>
+      </div>
+    </div>
+
+    <!-- 产品列表页 -->
+    <div class="page active" id="productPage">
+      <h2 class="page-title">🏪 产品列表</h2>
+      <div class="product-grid" id="productGrid">
+        <!-- 产品卡片动态生成 -->
+      </div>
+    </div>
+
+    <!-- 订单页 -->
+    <div class="page" id="orderPage">
+      <h2 class="page-title">📦 我的订单</h2>
+      <div class="order-list" id="orderList">
+        <!-- 订单动态生成 -->
+      </div>
+    </div>
+
+    <!-- 排行榜页 -->
+    <div class="page" id="rankPage">
+      <h2 class="page-title">🏆 业绩排行榜</h2>
+      <div class="rank-tabs">
+        <button class="rank-tab active" onclick="switchRankTab('daily')">日榜</button>
+        <button class="rank-tab" onclick="switchRankTab('monthly')">月榜</button>
+        <button class="rank-tab" onclick="switchRankTab('yearly')">年榜</button>
+        <button class="rank-tab" onclick="switchRankTab('total')">累计榜</button>
+      </div>
+      <div class="rank-list" id="rankList">
+        <!-- 排行动态生成 -->
+      </div>
+    </div>
+
+    <!-- 个人中心页 -->
+    <div class="page" id="profilePage">
+      <div class="profile-header">
+        <div class="profile-avatar" id="profileAvatar">张</div>
+        <div class="profile-name" id="profileName">张三</div>
+        <div class="profile-stats">
+          <div class="profile-stat">
+            <div class="profile-stat-value" id="profileOrders">12</div>
+            <div class="profile-stat-label">订单数</div>
+          </div>
+          <div class="profile-stat">
+            <div class="profile-stat-value" id="profileSales">¥8,680</div>
+            <div class="profile-stat-label">总销售额</div>
+          </div>
+          <div class="profile-stat">
+            <div class="profile-stat-value" id="profileRank">第5名</div>
+            <div class="profile-stat-label">月榜排名</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-menu">
+        <div class="profile-menu-item" onclick="showPage('rank')">
+          <span class="icon">🏆</span>
+          <span class="text">业绩排行榜</span>
+          <span class="arrow">›</span>
+        </div>
+        <div class="profile-menu-item" onclick="showPage('order')">
+          <span class="icon">📦</span>
+          <span class="text">我的订单</span>
+          <span class="arrow">›</span>
+        </div>
+        <div class="profile-menu-item">
+          <span class="icon">📞</span>
+          <span class="text">联系客服</span>
+          <span class="arrow">›</span>
+        </div>
+        <div class="profile-menu-item">
+          <span class="icon">📖</span>
+          <span class="text">使用教程</span>
+          <span class="arrow">›</span>
+        </div>
+      </div>
+
+      <button class="logout-btn" onclick="logout()">退出登录</button>
+    </div>
+
+    <!-- 底部导航 -->
+    <div class="bottom-nav">
+      <div class="nav-item active" onclick="showPage('product')">
+        <span class="icon">🏪</span>
+        <span>产品</span>
+      </div>
+      <div class="nav-item" onclick="showPage('order')">
+        <span class="icon">📦</span>
+        <span>订单</span>
+      </div>
+      <div class="nav-item" onclick="showPage('rank')">
+        <span class="icon">🏆</span>
+        <span>排行</span>
+      </div>
+      <div class="nav-item" onclick="showPage('profile')">
+        <span class="icon">👤</span>
+        <span>我的</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 下单页（覆盖层） -->
+  <div class="order-page" id="orderDetailPage" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:#f5f5f5; z-index:200; overflow-y:auto;">
+    <div style="position:sticky; top:0; background:#f5f5f5; padding:15px; display:flex; align-items:center; gap:15px; border-bottom:1px solid #eee;">
+      <button onclick="closeOrderPage()" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">←</button>
+      <h2 style="flex:1;">下单</h2>
+    </div>
+
+    <div style="padding:15px;">
+      <!-- 产品信息 -->
+      <div class="product-detail">
+        <div class="product-detail-img">🎂</div>
+        <div class="product-detail-info">
+          <div class="product-detail-name" id="detailName">超绝脆墩墩</div>
+          <div class="product-detail-price">¥<span id="detailPrice">59</span></div>
+        </div>
+      </div>
+
+      <!-- 规格选择 -->
+      <div class="spec-section">
+        <div class="section-title">选择规格</div>
+        <div class="spec-options" id="specOptions">
+          <div class="spec-option active" onclick="selectSpec(this, '59', '4枚装')">
+            <div class="spec-name">4枚装</div>
+            <div class="spec-price">¥59</div>
+          </div>
+          <div class="spec-option" onclick="selectSpec(this, '85', '7枚装')">
+            <div class="spec-name">7枚装</div>
+            <div class="spec-price">¥85</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 收货地址 -->
+      <div class="address-section">
+        <div class="section-title">收货地址</div>
+        <div class="address-form">
+          <input type="text" id="consignee" placeholder="收货人姓名">
+          <input type="tel" id="phone" placeholder="联系电话">
+          <textarea id="address" placeholder="详细地址（省市区+街道门牌号）"></textarea>
+        </div>
+      </div>
+
+      <!-- 支付方式 -->
+      <div class="payment-section">
+        <div class="section-title">支付方式</div>
+        <div class="payment-options">
+          <div class="payment-option active" onclick="selectPayment(this, 'wechat')">
+            <div class="icon">💚</div>
+            <div class="name">微信支付</div>
+          </div>
+          <div class="payment-option" onclick="selectPayment(this, 'alipay')">
+            <div class="icon">💙</div>
+            <div class="name">支付宝</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 提交按钮 -->
+    <div class="submit-order">
+      <button class="submit-order-btn" onclick="submitOrder()">
+        提交订单（¥<span id="totalPrice">59</span>）
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // ========== Supabase 配置 ==========
+    const SUPABASE_URL = 'https://iwmjnjmlhffvwqbbsazu.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3bWpubW1saGZmdndxYmJzYXp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI0MTcxNjAsImV4cCI6MjA1Nzk5MzE2MH0.J3TzLs9TrFD62vMWEJ5ZxA_EPyiE4DnyJ2hZv8WqZkU';
+    
+    // 初始化 Supabase 客户端
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // 数据初始化 - 预置测试账号和示例数据
+    let products = [];
+    let currentUser = null;
+    let orders = [];
+    
+    // 初始化数据库
+    async function initDatabase() {
+      try {
+        // 加载产品
+        const { data: productsData, error: productsError } = await supabase
+          .from('products')
+          .select('*')
+          .order('id');
+        
+        if (productsError) {
+          console.log('产品表不存在，尝试创建...');
+          await createTables();
+        } else {
+          products = productsData || [];
+        }
+        
+        // 如果没有产品，添加默认产品
+        if (products.length === 0) {
+          await addDefaultProducts();
+        }
+        
+        // 从本地存储加载当前用户
+        const savedUser = localStorage.getItem('currentUser');
+        if (savedUser) {
+          currentUser = JSON.parse(savedUser);
+          // 验证用户是否在数据库中
+          const { data: userData } = await supabase
+            .from('agents')
+            .select('*')
+            .eq('phone', currentUser.phone)
+            .single();
+          if (userData) {
+            currentUser = userData;
+          }
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('初始化失败:', error);
+        // 如果 Supabase 不可用，使用本地数据
+        products = JSON.parse(localStorage.getItem('products')) || [
+          { id: 1, name: '超绝脆墩墩', specs: [{name: '4枚装', price: 59}, {name: '7枚装', price: 85}], emoji: '🎂' }
+        ];
+        
+        // 预置已审核的测试账号
+        let agents = JSON.parse(localStorage.getItem('agents')) || [];
+        if (!agents.find(a => a.phone === '13800138000')) {
+          agents.push({ id: 1, phone: '13800138000', name: '张三', pwd: '123456', status: 'approved', createTime: '2024-01-01T00:00:00Z' });
+          localStorage.setItem('agents', JSON.stringify(agents));
+        }
+        
+        currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        orders = JSON.parse(localStorage.getItem('orders')) || [];
+        return true;
+      }
+    }
+    
+    // 创建数据库表
+    async function createTables() {
+      try {
+        // 创建产品表
+        const { error: productsError } = await supabase.rpc('pgio', {
+          sql: `CREATE TABLE IF NOT EXISTS products (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            emoji TEXT DEFAULT '🎂',
+            specs JSONB DEFAULT '[]',
+            created_at TIMESTAMP DEFAULT NOW()
+          )`
+        });
+        
+        // 静默处理错误，继续执行
+      } catch (e) {
+        // 忽略错误
+      }
+    }
+    
+    // 添加默认产品
+    async function addDefaultProducts() {
+      try {
+        const defaultProducts = [
+          { name: '超绝脆墩墩', emoji: '🎂', specs: [{name: '4枚装', price: 59}, {name: '7枚装', price: 85}] }
+        ];
+        
+        const { data, error } = await supabase
+          .from('products')
+          .insert(defaultProducts)
+          .select();
+        
+        if (!error && data) {
+          products = data;
+        }
+      } catch (e) {
+        // 使用本地数据
+        products = [{ id: 1, name: '超绝脆墩墩', specs: [{name: '4枚装', price: 59}, {name: '7枚装', price: 85}], emoji: '🎂' }];
+      }
+    }
+
+    // 排行榜数据
+    const rankData = {
+      daily: [
+        { rank: 1, name: '王芳', sales: '3.8万', change: 2 },
+        { rank: 2, name: '李明', sales: '3.5万', change: 0 },
+        { rank: 3, name: '张伟', sales: '3.2万', change: -1 },
+        { rank: 4, name: '赵丽', sales: '2.9万', change: 3 },
+        { rank: 5, name: '刘洋', sales: '2.6万', change: -2 },
+      ],
+      monthly: [
+        { rank: 1, name: '王芳', sales: '48.6万', change: 0 },
+        { rank: 2, name: '张伟', sales: '45.2万', change: 1 },
+        { rank: 3, name: '李明', sales: '42.8万', change: -1 },
+        { rank: 4, name: '刘洋', sales: '38.5万', change: 2 },
+        { rank: 5, name: '赵丽', sales: '35.2万', change: -1 },
+      ],
+      yearly: [
+        { rank: 1, name: '王芳', sales: '486万', change: 0 },
+        { rank: 2, name: '张伟', sales: '428万', change: 0 },
+        { rank: 3, name: '李明', sales: '386万', change: 2 },
+        { rank: 4, name: '刘洋', sales: '356万', change: -1 },
+        { rank: 5, name: '赵丽', sales: '328万', change: 1 },
+      ],
+      total: [
+        { rank: 1, name: '王芳', sales: '1,286万', change: 0 },
+        { rank: 2, name: '张伟', sales: '1,158万', change: 0 },
+        { rank: 3, name: '李明', sales: '986万', change: 0 },
+        { rank: 4, name: '刘洋', sales: '856万', change: 0 },
+        { rank: 5, name: '赵丽', sales: '728万', change: 0 },
+      ]
+    };
+
+    let currentRankTab = 'daily';
+    let selectedSpec = { price: 59, name: '4枚装' };
+
+    // 页面初始化
+    async function init() {
+      await initDatabase();
+      
+      if (currentUser && currentUser.status === 'approved') {
+        showMainApp();
+        renderProducts();
+        loadOrders();
+        renderRankList();
+        updateProfile();
+      } else if (currentUser && currentUser.status === 'pending') {
+        showAuthPage();
+        showToast('账号待审核，请耐心等待');
+      } else {
+        showAuthPage();
+      }
+    }
+    
+    // 加载订单
+    async function loadOrders() {
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (!error && data) {
+          orders = data;
+        }
+      } catch (e) {
+        orders = JSON.parse(localStorage.getItem('orders')) || [];
+      }
+    }
+
+    // 显示认证页
+    function showAuthPage() {
+      document.getElementById('authPage').style.display = 'block';
+      document.getElementById('mainApp').style.display = 'none';
+    }
+
+    // 显示主应用
+    function showMainApp() {
+      document.getElementById('authPage').style.display = 'none';
+      document.getElementById('mainApp').style.display = 'block';
+      document.getElementById('orderDetailPage').style.display = 'none';
+    }
+
+    // 显示注册
+    function showRegister() {
+      document.getElementById('loginForm').style.display = 'none';
+      document.getElementById('registerForm').style.display = 'block';
+    }
+
+    // 显示登录
+    function showLogin() {
+      document.getElementById('loginForm').style.display = 'block';
+      document.getElementById('registerForm').style.display = 'none';
+    }
+
+    // 注册
+    async function doRegister() {
+      const phone = document.getElementById('regPhone').value.trim();
+      const name = document.getElementById('regName').value.trim();
+      const pwd = document.getElementById('regPwd').value.trim();
+
+      if (!phone || !name || !pwd) {
+        showToast('请填写完整信息');
+        return;
+      }
+
+      if (phone.length !== 11) {
+        showToast('请输入正确的手机号');
+        return;
+      }
+
+      try {
+        // 检查是否已注册
+        const { data: existingAgent } = await supabase
+          .from('agents')
+          .select('*')
+          .eq('phone', phone)
+          .single();
+
+        if (existingAgent) {
+          showToast('该手机号已注册');
+          return;
+        }
+
+        // 创建待审核账号
+        const { data, error } = await supabase
+          .from('agents')
+          .insert({
+            phone,
+            name,
+            pwd,
+            status: 'pending'
+          })
+          .select();
+
+        if (error) throw error;
+
+        showToast('注册成功，等待管理员审核');
+        showLogin();
+      } catch (error) {
+        console.error('注册失败:', error);
+        // 降级到本地存储
+        const agents = JSON.parse(localStorage.getItem('agents')) || [];
+        if (agents.find(a => a.phone === phone)) {
+          showToast('该手机号已注册');
+          return;
+        }
+        agents.push({
+          id: Date.now(),
+          phone,
+          name,
+          pwd,
+          status: 'pending',
+          createTime: new Date().toISOString()
+        });
+        localStorage.setItem('agents', JSON.stringify(agents));
+        showToast('注册成功，等待管理员审核');
+        showLogin();
+      }
+    }
+
+    // 登录
+    async function doLogin() {
+      const phone = document.getElementById('loginPhone').value.trim();
+      const pwd = document.getElementById('loginPwd').value.trim();
+
+      if (!phone || !pwd) {
+        showToast('请输入手机号和密码');
+        return;
+      }
+
+      try {
+        // 从 Supabase 验证登录
+        const { data: agent, error } = await supabase
+          .from('agents')
+          .select('*')
+          .eq('phone', phone)
+          .eq('pwd', pwd)
+          .single();
+
+        if (error || !agent) {
+          // 尝试本地存储
+          const agents = JSON.parse(localStorage.getItem('agents')) || [];
+          const localAgent = agents.find(a => a.phone === phone && a.pwd === pwd);
+          
+          if (localAgent) {
+            currentUser = localAgent;
+            localStorage.setItem('currentUser', JSON.stringify(localAgent));
+            showMainApp();
+            renderProducts();
+            loadOrders();
+            renderRankList();
+            updateProfile();
+            showToast('登录成功');
+            return;
+          }
+          
+          showToast('手机号或密码错误');
+          return;
+        }
+
+        if (agent.status === 'pending') {
+          showToast('账号待审核，请耐心等待');
+          return;
+        }
+
+        if (agent.status === 'rejected') {
+          showToast('账号已被禁用');
+          return;
+        }
+
+        currentUser = agent;
+        localStorage.setItem('currentUser', JSON.stringify(agent));
+        showMainApp();
+        renderProducts();
+        loadOrders();
+        renderRankList();
+        updateProfile();
+        showToast('登录成功');
+      } catch (error) {
+        console.error('登录失败:', error);
+        // 降级到本地存储
+        const agents = JSON.parse(localStorage.getItem('agents')) || [];
+        const agent = agents.find(a => a.phone === phone && a.pwd === pwd);
+
+        if (!agent) {
+          showToast('手机号或密码错误');
+          return;
+        }
+
+        if (agent.status === 'pending') {
+          showToast('账号待审核，请耐心等待');
+          return;
+        }
+
+        if (agent.status === 'rejected') {
+          showToast('账号已被禁用');
+          return;
+        }
+
+        currentUser = agent;
+        localStorage.setItem('currentUser', JSON.stringify(agent));
+        showMainApp();
+        renderProducts();
+        renderOrders();
+        renderRankList();
+        updateProfile();
+        showToast('登录成功');
+      }
+    }
+
+    // 登出
+    function logout() {
+      currentUser = null;
+      localStorage.removeItem('currentUser');
+      showAuthPage();
+      showToast('已退出登录');
+    }
+
+    // 渲染产品列表
+    function renderProducts() {
+      const grid = document.getElementById('productGrid');
+      
+      if (!products || products.length === 0) {
+        grid.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">📦</div>
+            <p>暂无产品</p>
+          </div>
+        `;
+        return;
+      }
+      
+      grid.innerHTML = products.map(p => {
+        // 处理 Supabase 返回的数据格式
+        const specs = p.specs || (typeof p.specifications === 'string' ? JSON.parse(p.specifications) : []);
+        const defaultSpec = specs[0] || { name: '默认', price: 0 };
+        const emoji = p.emoji || '🎂';
+        
+        return `
+          <div class="product-card" onclick="openOrderPage(${p.id})">
+            <div class="product-img">${emoji}</div>
+            <div class="product-info">
+              <div class="product-name">${p.name}</div>
+              <div class="product-price">¥${defaultSpec.price}<span class="product-unit">/${defaultSpec.name}</span></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 渲染订单列表
+    function renderOrders() {
+      const list = document.getElementById('orderList');
+      const userOrders = orders.filter(o => o.agent_id === currentUser?.id || o.agentId === currentUser?.id);
+
+      if (userOrders.length === 0) {
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">📦</div>
+            <p>暂无订单</p>
+          </div>
+        `;
+        return;
+      }
+
+      list.innerHTML = userOrders.map(o => `
+        <div class="order-card">
+          <div class="order-header">
+            <span class="order-id">订单号：${o.id}</span>
+            <span class="order-status ${o.status}">${getStatusText(o.status)}</span>
+          </div>
+          <div class="order-product">
+            <div class="order-product-img">${o.emoji || '🎂'}</div>
+            <div class="order-product-info">
+              <h4>${o.product_name || o.productName}</h4>
+              <p>${o.spec} · ${o.consignee} · ${o.phone}</p>
+            </div>
+          </div>
+          <div class="order-footer">
+            <span class="order-total">¥${o.price}</span>
+            <span class="order-time">${new Date(o.created_at || o.createTime).toLocaleDateString()}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function getStatusText(status) {
+      const map = { pending: '待发货', shipped: '已发货', completed: '已完成' };
+      return map[status] || status;
+    }
+
+    // 渲染排行榜
+    function renderRankList() {
+      const list = document.getElementById('rankList');
+      const data = rankData[currentRankTab];
+
+      list.innerHTML = data.map(item => `
+        <div class="rank-item">
+          <div class="rank-num ${getRankClass(item.rank)}">${item.rank}</div>
+          <div class="rank-agent">
+            <div class="rank-agent-name">${item.name}</div>
+          </div>
+          <div class="rank-sales">
+            <div class="rank-sales-value">¥${item.sales}</div>
+            <div class="rank-change ${item.change > 0 ? 'up' : item.change < 0 ? 'down' : 'same'}">
+              ${item.change > 0 ? '↑ +' + item.change : item.change < 0 ? '↓ ' + item.change : '— 持平'}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function getRankClass(rank) {
+      if (rank === 1) return 'gold';
+      if (rank === 2) return 'silver';
+      if (rank === 3) return 'bronze';
+      return 'normal';
+    }
+
+    function switchRankTab(tab) {
+      currentRankTab = tab;
+      document.querySelectorAll('.rank-tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      renderRankList();
+    }
+
+    // 更新个人中心
+    function updateProfile() {
+      if (!currentUser) return;
+      document.getElementById('profileAvatar').textContent = currentUser.name.charAt(0);
+      document.getElementById('profileName').textContent = currentUser.name;
+      document.getElementById('profileTeam').textContent = currentUser.team;
+
+      const userOrders = orders.filter(o => o.agentId === currentUser.id);
+      const totalSales = userOrders.reduce((sum, o) => sum + o.price, 0);
+      
+      document.getElementById('profileOrders').textContent = userOrders.length;
+      document.getElementById('profileSales').textContent = '¥' + totalSales.toLocaleString();
+    }
+
+    // 显示页面
+    function showPage(page) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById(page + 'Page').classList.add('active');
+      
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      const navMap = { product: 0, order: 1, rank: 2, profile: 3 };
+      document.querySelectorAll('.nav-item')[navMap[page]].classList.add('active');
+
+      if (page === 'order') renderOrders();
+      if (page === 'rank') renderRankList();
+      if (page === 'profile') updateProfile();
+    }
+
+    // 打开下单页
+    function openOrderPage(productId) {
+      const product = products.find(p => p.id === productId);
+      if (!product) return;
+
+      document.getElementById('detailName').textContent = product.name;
+      document.getElementById('detailPrice').textContent = product.specs[0].price;
+      document.getElementById('totalPrice').textContent = product.specs[0].price;
+      selectedSpec = { price: product.specs[0].price, name: product.specs[0].name };
+
+      // 渲染规格选项
+      const specOptions = document.getElementById('specOptions');
+      specOptions.innerHTML = product.specs.map((spec, i) => `
+        <div class="spec-option ${i === 0 ? 'active' : ''}" onclick="selectSpec(this, '${spec.price}', '${spec.name}')">
+          <div class="spec-name">${spec.name}</div>
+          <div class="spec-price">¥${spec.price}</div>
+        </div>
+      `).join('');
+
+      document.getElementById('orderDetailPage').style.display = 'block';
+    }
+
+    // 关闭下单页
+    function closeOrderPage() {
+      document.getElementById('orderDetailPage').style.display = 'none';
+    }
+
+    // 选择规格
+    function selectSpec(el, price, name) {
+      document.querySelectorAll('.spec-option').forEach(o => o.classList.remove('active'));
+      el.classList.add('active');
+      selectedSpec = { price, name };
+      document.getElementById('detailPrice').textContent = price;
+      document.getElementById('totalPrice').textContent = price;
+    }
+
+    // 选择支付方式
+    function selectPayment(el, type) {
+      document.querySelectorAll('.payment-option').forEach(o => o.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    // 提交订单
+    async function submitOrder() {
+      const consignee = document.getElementById('consignee').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const address = document.getElementById('address').value.trim();
+
+      if (!consignee || !phone || !address) {
+        showToast('请填写完整收货信息');
+        return;
+      }
+
+      if (phone.length !== 11) {
+        showToast('请输入正确的手机号');
+        return;
+      }
+
+      try {
+        const order = {
+          id: 'DD' + Date.now(),
+          product_id: products[0].id,
+          product_name: products[0].name,
+          emoji: products[0].emoji,
+          spec: selectedSpec.name,
+          price: parseInt(selectedSpec.price),
+          consignee,
+          phone,
+          address,
+          status: 'pending',
+          agent_id: currentUser?.id,
+          agent_name: currentUser?.name
+        };
+
+        const { data, error } = await supabase
+          .from('orders')
+          .insert(order)
+          .select();
+
+        if (error) throw error;
+
+        showToast('订单提交成功！');
+        closeOrderPage();
+        
+        // 清空表单
+        document.getElementById('consignee').value = '';
+        document.getElementById('phone').value = '';
+        document.getElementById('address').value = '';
+
+        await loadOrders();
+        renderOrders();
+        updateProfile();
+      } catch (error) {
+        console.error('提交订单失败:', error);
+        // 降级到本地存储
+        const order = {
+          id: 'DD' + Date.now(),
+          productId: products[0].id,
+          productName: products[0].name,
+          emoji: products[0].emoji,
+          spec: selectedSpec.name,
+          price: parseInt(selectedSpec.price),
+          consignee,
+          phone,
+          address,
+          status: 'pending',
+          agentId: currentUser?.id,
+          createTime: new Date().toISOString()
+        };
+
+        orders.push(order);
+        localStorage.setItem('orders', JSON.stringify(orders));
+
+        showToast('订单提交成功！');
+        closeOrderPage();
+        
+        // 清空表单
+        document.getElementById('consignee').value = '';
+        document.getElementById('phone').value = '';
+        document.getElementById('address').value = '';
+
+        renderOrders();
+        updateProfile();
+      }
+    }
+
+    // Toast提示
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // 初始化
+    init();
+  </script>
+</body>
+</html>
